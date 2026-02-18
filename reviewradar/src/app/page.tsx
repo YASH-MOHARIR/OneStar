@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-slate-50 to-white px-6 dark:from-slate-950 dark:to-slate-900">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-slate-100 via-blue-50/20 to-slate-100 px-6">
       <main className="mx-auto max-w-3xl text-center">
         <h1 className="bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-5xl font-bold tracking-tight text-transparent md:text-6xl">
           ReviewRadar
@@ -10,7 +10,7 @@ export default function Home() {
         <p className="mt-4 text-xl text-slate-600 dark:text-slate-400">
           AI-powered app review analysis for Google Play & App Store
         </p>
-        <p className="mt-2 text-slate-500 dark:text-slate-500">
+        <p className="mt-2 text-slate-500">
           Scrape reviews, categorize complaints, and surface actionable insights
         </p>
         <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:justify-center">
@@ -22,7 +22,7 @@ export default function Home() {
           </Link>
           <Link
             href="/api/search?q=spotify"
-            className="rounded-lg border border-slate-300 px-6 py-3 font-medium transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+            className="rounded-xl border border-white/80 bg-white/60 px-6 py-3 font-medium shadow-md backdrop-blur-sm transition hover:bg-white/80"
           >
             Try Search API
           </Link>

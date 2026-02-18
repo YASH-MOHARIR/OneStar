@@ -4,8 +4,8 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
-      <nav className="border-b border-slate-200 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50/30 to-slate-100">
+      <nav className="border-b border-white/60 bg-white/60 backdrop-blur-md px-6 py-4 shadow-sm">
         <a href="/" className="text-lg font-semibold text-blue-600">
           ReviewRadar
         </a>
