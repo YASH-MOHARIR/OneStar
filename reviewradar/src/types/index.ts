@@ -29,6 +29,8 @@ export interface ComplaintCategoryResult {
   category: string;
   parentCategory: string;
   count: number;
+  percentage?: number;
+  rank?: number;
   severity: "critical" | "high" | "medium" | "low";
   sampleReviews: string[];
 }
