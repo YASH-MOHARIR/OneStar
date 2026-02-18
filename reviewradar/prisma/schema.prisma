@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Users ───
+// Synced from Clerk via webhook. Stores billing + usage metadata.
+model User {
+  id               String     @id // Clerk user ID (e.g., "user_2abc...")
+  email            String     @unique
+  name             String?
+  imageUrl         String?
+  plan             Plan       @default(FREE)
+  creditsUsed      Int        @default(0) @map("credits_used")
+  creditsLimit     Int        @default(3) @map("credits_limit")
+  creditsResetAt   DateTime?  @map("credits_reset_at")
+  stripeCustomerId String?    @unique @map("stripe_customer_id")
+  stripeSubId      String?    @unique @map("stripe_sub_id")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+  analyses         Analysis[]
+
+  @@map("users")
+}
+
+enum Plan {
+  FREE
+  STARTER
+  PRO
+  TEAM
+}
+
+// ─── Apps ───
+// Every app that has been analyzed at least once.
+model App {
+  id           Int        @id @default(autoincrement())
+  store        Store
+  storeId      String     @map("store_id") // e.g., "com.spotify.music"
+  name         String
+  slug         String     @unique // URL-safe name: "spotify-music-and-podcasts"
+  iconUrl      String?    @map("icon_url")
+  rating       Float?
+  totalRatings Int?       @map("total_ratings")
+  category     String?
+  developer    String?
+  url          String?    // Play Store or App Store URL
+  lastScraped  DateTime?  @map("last_scraped")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  reviews      Review[]
+  analyses     Analysis[]
+
+  @@unique([store, storeId])
+  @@map("apps")
+}
+
+enum Store {
+  GOOGLE_PLAY
+  APP_STORE
+}
+
+// ─── Reviews ───
+// Cached individual reviews from app stores.
+model Review {
+  id            Int       @id @default(autoincrement())
+  appId         Int       @map("app_id")
+  storeReviewId String    @map("store_review_id") // Original review ID from store
+  score         Int       // 1-5
+  title         String?   // Review title (App Store has these)
+  text          String?   // Review body text
+  userName      String?   @map("user_name")
+  date          DateTime?
+  version       String?   // App version the review was for
+  thumbsUp      Int       @default(0) @map("thumbs_up")
+  scrapedAt     DateTime  @default(now()) @map("scraped_at")
+  app           App       @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@unique([appId, storeReviewId])
+  @@index([appId, score])
+  @@index([appId, date(sort: Desc)])
+  @@map("reviews")
+}
+
+// ─── Analyses ───
+// Each time a user runs an analysis on an app.
+model Analysis {
+  id              Int                  @id @default(autoincrement())
+  appId           Int                  @map("app_id")
+  userId          String               @map("user_id")
+  status          AnalysisStatus       @default(PENDING)
+  threshold       Int                  @default(3) // Star rating cutoff (<=)
+  timeRange       TimeRange            @default(LAST_6_MONTHS) @map("time_range")
+  totalReviews    Int?                 @map("total_reviews")
+  negativeReviews Int?                 @map("negative_reviews")
+  processingTime  Int?                 @map("processing_time") // seconds
+  shareId         String?              @unique @map("share_id") // nanoid for public share links
+  isPublic        Boolean              @default(true) @map("is_public") // Show on SEO page
+  createdAt       DateTime             @default(now()) @map("created_at")
+  completedAt     DateTime?            @map("completed_at")
+  app             App                  @relation(fields: [appId], references: [id], onDelete: Cascade)
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  complaints      ComplaintCategory[]
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([appId, createdAt(sort: Desc)])
+  @@map("analyses")
+}
+
+enum AnalysisStatus {
+  PENDING
+  SCRAPING
+  ANALYZING
+  COMPLETE
+  FAILED
+}
+
+enum TimeRange {
+  LAST_MONTH
+  LAST_3_MONTHS
+  LAST_6_MONTHS
+  LAST_YEAR
+  ALL_TIME
+}
+
+// ─── Complaint Categories ───
+// AI-generated complaint clusters for each analysis.
+model ComplaintCategory {
+  id             Int      @id @default(autoincrement())
+  analysisId     Int      @map("analysis_id")
+  category       String   // e.g., "App crashes on launch"
+  parentCategory String?  @map("parent_category") // e.g., "Performance"
+  count          Int      // How many reviews mention this
+  percentage     Float    // % of negative reviews
+  severity       Severity
+  sampleReviews  String[] @map("sample_reviews") // 2-3 example excerpts
+  rank           Int      // 1 = most frequent
+  trending       Trend    @default(STABLE)
+  analysis       Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId, rank])
+  @@map("complaint_categories")
+}
+
+enum Severity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum Trend {
+  INCREASING
+  STABLE
+  DECREASING
+}
