@@ -3,7 +3,6 @@ import type { ScrapeOptions, ScrapeResult } from "./types";
 
 /**
  * Search Google Play Store for apps by name.
- * Used for the autocomplete search bar.
  */
 export async function searchGooglePlay(term: string, num = 10) {
   const results = await gplay.search({ term, num });
@@ -35,36 +34,38 @@ export async function getGooglePlayApp(appId: string) {
   };
 }
 
+const SORT_MAP: Record<string, number> = {
+  newest: 2, // gplay.sort.NEWEST
+  rating: 3, // gplay.sort.RATING - lowest first for negative review analysis
+  helpfulness: 1, // gplay.sort.HELPFULNESS
+};
+
 /**
- * Fetch reviews from Google Play.
- * Paginates automatically to get up to `num` reviews.
- * Returns ALL reviews — filtering by score happens later.
+ * Scrape Google Play reviews sorted by RATING (lowest first).
+ * Ensures we get the most negative reviews first for analysis.
+ *
+ * IMPORTANT: Google Play recycles reviews after ~5,000-6,000 unique results.
+ * We deduplicate by storeReviewId and stop when batches return 0 new unique reviews.
+ * For negative review analysis, 3,000 sorted by lowest rating is sufficient.
  */
 export async function scrapeGooglePlayReviews(
   appId: string,
   options: ScrapeOptions = {}
 ): Promise<ScrapeResult> {
-  const { num = 3000, sort = "newest", lang = "en", country = "us" } = options;
+  const { num = 3000, sort = "rating", lang = "en", country = "us" } = options;
 
-  // Fetch app details
   const appDetails = await getGooglePlayApp(appId);
 
-  // Fetch reviews with pagination
-  const allReviews: ScrapeResult["reviews"] = [];
+  const uniqueReviews = new Map<string, ScrapeResult["reviews"][0]>();
   let nextToken: string | null = null;
+  let emptyBatches = 0;
 
-  const sortMap: Record<string, number> = {
-    newest: 2, // gplay.sort.NEWEST
-    rating: 3, // gplay.sort.RATING
-    helpfulness: 1, // gplay.sort.HELPFULNESS
-  };
-
-  while (allReviews.length < num) {
-    const batchSize = Math.min(150, num - allReviews.length);
+  while (uniqueReviews.size < num) {
+    const batchSize = Math.min(150, num - uniqueReviews.size);
 
     const result = await gplay.reviews({
       appId,
-      sort: sortMap[sort] ?? gplay.sort.NEWEST,
+      sort: SORT_MAP[sort] ?? 3, // default rating
       num: batchSize,
       lang,
       country,
@@ -75,32 +76,53 @@ export async function scrapeGooglePlayReviews(
     const reviews = result.data;
     if (!reviews || reviews.length === 0) break;
 
+    const batch: ScrapeResult["reviews"] = [];
+    let newInBatch = 0;
+
     for (const review of reviews) {
-      allReviews.push({
-        storeReviewId: review.id ?? String(Math.random()),
-        score: review.score ?? 0,
-        title: review.title || undefined,
-        text: review.text || "",
-        userName: review.userName || undefined,
-        date: new Date(review.date ?? Date.now()),
-        version: review.version || undefined,
-        thumbsUp: (review as { thumbsUp?: number }).thumbsUp ?? 0,
-      });
+      const id = review.id ?? String(Math.random());
+      if (!uniqueReviews.has(id)) {
+        const r = {
+          storeReviewId: id,
+          score: review.score ?? 0,
+          title: review.title || undefined,
+          text: review.text || "",
+          userName: review.userName || undefined,
+          date: new Date(review.date ?? Date.now()),
+          version: review.version || undefined,
+          thumbsUp: (review as { thumbsUp?: number }).thumbsUp ?? 0,
+        };
+        uniqueReviews.set(id, r);
+        batch.push(r);
+        newInBatch++;
+      }
+    }
+
+    if (options.onBatch && batch.length > 0) {
+      await options.onBatch(batch, uniqueReviews.size);
+    }
+
+    if (newInBatch === 0) {
+      emptyBatches++;
+      if (emptyBatches >= 2) break;
+    } else {
+      emptyBatches = 0;
     }
 
     nextToken = result.nextPaginationToken ?? null;
     if (!nextToken) break;
 
-    // Rate limiting: wait 500ms between pagination calls
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
-  return { app: appDetails, reviews: allReviews };
+  return {
+    app: appDetails,
+    reviews: Array.from(uniqueReviews.values()),
+  };
 }
 
 /**
  * Parse a Google Play URL to extract the app ID.
- * Supports: https://play.google.com/store/apps/details?id=com.spotify.music
  */
 export function parseGooglePlayUrl(url: string): string | null {
   try {

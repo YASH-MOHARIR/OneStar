@@ -1,8 +1,9 @@
 export interface ScrapeOptions {
-  num?: number;        // Max reviews to fetch (default: 3000)
+  num?: number;        // Max reviews to fetch (default: 3000 for Google Play)
   sort?: "newest" | "rating" | "helpfulness";
   lang?: string;       // Default: "en"
   country?: string;    // Default: "us"
+  onBatch?: (batch: ScrapeResult["reviews"], totalFetched: number) => void | Promise<void>;
 }
 
 export interface ScrapeResult {
