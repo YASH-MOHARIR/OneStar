@@ -81,19 +81,21 @@ export interface ReportResponse {
   analysis: {
     id: number;
     status: string;
-    totalReviews: number;
-    negativeReviews: number;
-    processingTime: number;
+    totalReviews: number | null;
+    totalRatings: number | null;
+    negativeReviews: number | null;
+    processingTime: number | null;
     createdAt: string;
   };
   app: {
     name: string;
     store: string;
-    iconUrl: string;
-    rating: number;
-    totalRatings: number;
-    category: string;
-    developer: string;
+    iconUrl?: string | null;
+    rating?: number | null;
+    totalRatings?: number | null;
+    category?: string | null;
+    developer?: string | null;
+    slug?: string;
   };
   complaints: {
     category: string;
@@ -105,6 +107,12 @@ export interface ReportResponse {
     rank: number;
     trending: string;
   }[];
+  scrapeMeta?: {
+    totalFetched: number;
+    uniqueCount: number;
+    duplicatesDetected: number;
+    stoppedReason: string;
+  };
 }
 
 // ─── Component Prop Types ───

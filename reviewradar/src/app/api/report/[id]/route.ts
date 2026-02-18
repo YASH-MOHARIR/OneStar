@@ -30,6 +30,7 @@ export async function GET(
         id: analysis.id,
         status: analysis.status,
         totalReviews: analysis.totalReviews,
+        totalRatings: analysis.totalRatings,
         negativeReviews: analysis.negativeReviews,
       },
       app: {
@@ -46,6 +47,7 @@ export async function GET(
       id: analysis.id,
       status: analysis.status,
       totalReviews: analysis.totalReviews,
+      totalRatings: analysis.totalRatings,
       negativeReviews: analysis.negativeReviews,
       processingTime: analysis.processingTime,
       createdAt: analysis.createdAt.toISOString(),

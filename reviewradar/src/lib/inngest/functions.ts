@@ -36,7 +36,7 @@ export const runAnalysis = inngest.createFunction(
     });
 
     const scrapeResult = await step.run("scrape-reviews", async () => {
-      const result = await scrapeReviews(storeId, store, { num: 3000, sort: "rating" });
+      const result = await scrapeReviews(storeId, store, { num: 3000 });
 
       await db.app.update({
         where: { store_storeId: { store, storeId } },
@@ -82,7 +82,9 @@ export const runAnalysis = inngest.createFunction(
       }
 
       return {
-        totalReviews: result.reviews.length,
+        totalRatings: result.app.totalRatings,
+        totalReviews: result.scrapeMeta.uniqueCount,
+        scrapeMeta: result.scrapeMeta,
         appName: result.app.name,
         appCategory: result.app.category || "General",
       };
@@ -108,6 +110,7 @@ export const runAnalysis = inngest.createFunction(
         where: { id: analysisId },
         data: {
           status: "ANALYZING",
+          totalRatings: scrapeResult.totalRatings,
           totalReviews: scrapeResult.totalReviews,
           negativeReviews: reviews.length,
         },

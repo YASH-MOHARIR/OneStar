@@ -67,7 +67,7 @@ export default function AnalyzePage() {
     4: false,
     5: false,
   });
-  const [loading, setLoading] = useState<"idle" | "search" | "reviews">("idle");
+  const [loading, setLoading] = useState<"idle" | "search" | "reviews" | "analyze">("idle");
   const [progress, setProgress] = useState<{ fetched: number; totalEstimate: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -204,6 +204,35 @@ export default function AnalyzePage() {
     void fetchReviewsStreaming(app.storeId, app.store);
   };
 
+  const handleRunAIAnalysis = async () => {
+    if (!selectedApp) return;
+    setError(null);
+    setLoading("analyze");
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storeId: selectedApp.storeId,
+          store: selectedApp.store,
+          threshold: 3,
+          timeRange: "LAST_6_MONTHS",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Analysis failed");
+      window.location.href = `/report/${data.analysisId}`;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Analysis failed";
+      setError(
+        msg.toLowerCase().includes("unauthorized")
+          ? "Please sign in to run AI analysis."
+          : msg
+      );
+      setLoading("idle");
+    }
+  };
+
   const filteredReviews =
     starFilter === "all"
       ? reviews
@@ -294,6 +323,21 @@ export default function AnalyzePage() {
           <p className="mt-2 text-xs text-slate-500">
             This may take a few minutes for apps with many reviews. Progress updates in real time.
           </p>
+        </div>
+      )}
+
+      {selectedApp && (
+        <div className={`flex flex-wrap items-center gap-4 p-6 ${clayCard}`}>
+          <button
+            onClick={handleRunAIAnalysis}
+            disabled={loading === "analyze"}
+            className="rounded-xl bg-blue-500 px-6 py-3 font-medium text-white shadow-lg shadow-blue-500/25 hover:bg-blue-600 disabled:opacity-50"
+          >
+            {loading === "analyze" ? "Starting..." : "Run AI Analysis"}
+          </button>
+          <span className="text-sm text-slate-600">
+            Get complaint categories from negative reviews (≤3★)
+          </span>
         </div>
       )}
 

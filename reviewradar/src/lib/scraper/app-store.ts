@@ -37,12 +37,13 @@ export async function getAppStoreApp(appId: string | number) {
 /**
  * Scrape Apple App Store reviews.
  * HARD LIMIT: Apple's RSS feed caps at ~500 reviews per country (10 pages × ~50).
+ * Apple doesn't recycle — always returns target_reached or no_more_results.
  */
 export async function scrapeAppStoreReviews(
   appId: string | number,
   options: ScrapeOptions = {}
 ): Promise<ScrapeResult> {
-  const { sort = "newest", country = "us" } = options;
+  const { country = "us" } = options;
 
   const appDetails = await getAppStoreApp(appId);
   const allReviews: ScrapeResult["reviews"] = [];
@@ -51,7 +52,7 @@ export async function scrapeAppStoreReviews(
     try {
       const reviews = await store.reviews({
         id: Number(appId),
-        sort: sort === "newest" ? store.sort.RECENT : store.sort.HELPFUL,
+        sort: store.sort.RECENT,
         page,
         country,
       });
@@ -83,7 +84,16 @@ export async function scrapeAppStoreReviews(
     }
   }
 
-  return { app: appDetails, reviews: allReviews };
+  return {
+    app: appDetails,
+    reviews: allReviews,
+    scrapeMeta: {
+      totalFetched: allReviews.length,
+      uniqueCount: allReviews.length,
+      duplicatesDetected: 0,
+      stoppedReason: "target_reached",
+    },
+  };
 }
 
 /**

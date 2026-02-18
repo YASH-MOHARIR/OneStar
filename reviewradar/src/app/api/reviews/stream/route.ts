@@ -35,7 +35,6 @@ export async function GET(req: NextRequest) {
       try {
         const result = await scrapeReviews(appId, store, {
           num,
-          sort: "newest", // For listing UI - use "rating" when doing AI analysis for negative reviews
           onBatch: async (batch, totalFetched) => {
             send({
               type: "progress",

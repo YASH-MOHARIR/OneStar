@@ -1,10 +1,16 @@
 export interface ScrapeOptions {
-  num?: number;        // Max reviews to fetch (default: 3000 for Google Play)
-  sort?: "newest" | "rating" | "helpfulness";
-  lang?: string;       // Default: "en"
-  country?: string;    // Default: "us"
+  num?: number;       // default: 3000
+  lang?: string;      // default: "en"
+  country?: string;   // default: "us"
   onBatch?: (batch: ScrapeResult["reviews"], totalFetched: number) => void | Promise<void>;
+  // Sort is NOT configurable. Always RATING (lowest first).
 }
+
+export type ScrapeStoppedReason =
+  | "target_reached"
+  | "no_more_results"
+  | "recycling_detected"
+  | "error";
 
 export interface ScrapeResult {
   app: {
@@ -27,4 +33,10 @@ export interface ScrapeResult {
     version?: string;
     thumbsUp?: number;
   }[];
+  scrapeMeta: {
+    totalFetched: number;
+    uniqueCount: number;
+    duplicatesDetected: number;
+    stoppedReason: ScrapeStoppedReason;
+  };
 }

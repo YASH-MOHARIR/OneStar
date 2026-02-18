@@ -94,8 +94,9 @@ model Analysis {
   status          AnalysisStatus       @default(PENDING)
   threshold       Int                  @default(3) // Star rating cutoff (<=)
   timeRange       TimeRange            @default(LAST_6_MONTHS) @map("time_range")
-  totalReviews    Int?                 @map("total_reviews")
-  negativeReviews Int?                 @map("negative_reviews")
+  totalReviews    Int?                 @map("total_reviews")    // written reviews scraped
+  totalRatings    Int?                 @map("total_ratings")    // ALL ratings from store (star taps + written)
+  negativeReviews Int?                 @map("negative_reviews") // filtered by threshold
   processingTime  Int?                 @map("processing_time") // seconds
   shareId         String?              @unique @map("share_id") // nanoid for public share links
   isPublic        Boolean              @default(true) @map("is_public") // Show on SEO page
