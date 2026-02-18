@@ -55,6 +55,8 @@ export default function ReportPage() {
   useEffect(() => {
     if (!id) return;
 
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
     const fetchReport = async () => {
       try {
         const res = await fetch(`/api/report/${id}`);
@@ -64,14 +66,19 @@ export default function ReportPage() {
           return;
         }
         setData(json);
+        if (json.analysis?.status === "COMPLETE" || json.analysis?.status === "FAILED") {
+          if (intervalId) clearInterval(intervalId);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load report");
       }
     };
 
     fetchReport();
-    const interval = setInterval(fetchReport, 2000);
-    return () => clearInterval(interval);
+    intervalId = setInterval(fetchReport, 2000);
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [id]);
 
   useEffect(() => {

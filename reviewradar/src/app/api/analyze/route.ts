@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { parseAppUrl } from "@/lib/scraper";
 import { inngest } from "@/lib/inngest/client";
+import { runAnalysisCore } from "@/lib/analysis/run";
 import { z } from "zod/v3";
 
 const GUEST_USER_ID = "guest";
+
+// Allow long-running requests when falling back to inline analysis (no Inngest)
+export const maxDuration = 300;
 
 const AnalyzeSchema = z.object({
   appUrl: z.string().url().optional(),
@@ -113,21 +117,43 @@ export async function POST(req: NextRequest) {
     data: { creditsUsed: { increment: 1 } },
   });
 
-  await inngest.send({
-    name: "analysis/run",
-    data: {
+  try {
+    await inngest.send({
+      name: "analysis/run",
+      data: {
+        analysisId: analysis.id,
+        appId: app.id,
+        storeId: resolvedStoreId,
+        store: resolvedStore,
+        threshold,
+        timeRange,
+      },
+    });
+    return NextResponse.json({
       analysisId: analysis.id,
-      appId: app.id,
+      status: "PENDING",
+      message: "Analysis started. Poll /api/report/{id} for results.",
+    });
+  } catch (err) {
+    // Inngest not configured (401, missing keys) - run analysis inline
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!msg.includes("401") && !msg.includes("Event key") && !msg.includes("signing key")) {
+      throw err;
+    }
+    await runAnalysisCore({
+      analysisId: analysis.id,
       storeId: resolvedStoreId,
       store: resolvedStore,
       threshold,
       timeRange,
-    },
-  });
-
-  return NextResponse.json({
-    analysisId: analysis.id,
-    status: "PENDING",
-    message: "Analysis started. Poll /api/report/{id} for results.",
-  });
+    });
+    const updated = await db.analysis.findUnique({
+      where: { id: analysis.id },
+    });
+    return NextResponse.json({
+      analysisId: analysis.id,
+      status: updated?.status ?? "COMPLETE",
+      message: "Analysis completed (ran inline - Inngest not configured).",
+    });
+  }
 }

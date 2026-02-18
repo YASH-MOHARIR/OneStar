@@ -51,11 +51,13 @@ export async function categorizeReviews(
     try {
       const result = await categorizeBatchGemini(SYSTEM_PROMPT, userPrompt);
       allBatchResults.push(result);
-    } catch {
+    } catch (geminiErr) {
+      console.warn("[categorize] Gemini failed for batch", i + 1, geminiErr);
       try {
         const result = await categorizeBatchOpenAI(SYSTEM_PROMPT, userPrompt);
         allBatchResults.push(result);
-      } catch {
+      } catch (openaiErr) {
+        console.error("[categorize] Both Gemini and OpenAI failed for batch", i + 1, { geminiErr, openaiErr });
         // Skip this batch
       }
     }
@@ -68,6 +70,9 @@ export async function categorizeReviews(
   onProgress?.("merging", 85);
 
   if (allBatchResults.length === 0) {
+    console.error(
+      "[categorize] All batches failed. Check GEMINI_API_KEY and OPENAI_API_KEY in .env.local, then restart the dev server."
+    );
     return {
       categories: [],
       totalReviewsAnalyzed: reviews.length,
