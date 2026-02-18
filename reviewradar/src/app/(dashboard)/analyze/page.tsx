@@ -1,7 +1,17 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import Image from "next/image";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 function parseAppUrl(url: string): { store: "GOOGLE_PLAY" | "APP_STORE"; appId: string } | null {
   try {
@@ -50,6 +60,13 @@ export default function AnalyzePage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [appInfo, setAppInfo] = useState<{ name: string; iconUrl?: string; totalRatings?: number } | null>(null);
   const [starFilter, setStarFilter] = useState<number | "all">("all");
+  const [chartStars, setChartStars] = useState<Record<number, boolean>>({
+    1: true,
+    2: true,
+    3: true,
+    4: false,
+    5: false,
+  });
   const [loading, setLoading] = useState<"idle" | "search" | "reviews">("idle");
   const [progress, setProgress] = useState<{ fetched: number; totalEstimate: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -197,6 +214,30 @@ export default function AnalyzePage() {
     count: reviews.filter((r) => r.score === s).length,
   }));
 
+  const monthlyData = useMemo(() => {
+    const byMonth: Record<
+      string,
+      { month: string; monthLabel: string; "1": number; "2": number; "3": number; "4": number; "5": number }
+    > = {};
+    for (const r of reviews) {
+      const d = new Date(r.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!byMonth[key]) {
+        byMonth[key] = {
+          month: key,
+          monthLabel: d.toLocaleDateString("en-US", { month: "short", year: "2-digit" }),
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0,
+        };
+      }
+      byMonth[key]![String(r.score) as "1" | "2" | "3" | "4" | "5"]++;
+    }
+    return Object.values(byMonth).sort((a, b) => a.month.localeCompare(b.month));
+  }, [reviews]);
+
   const progressPercent =
     progress && progress.totalEstimate > 0
       ? Math.min(100, (progress.fetched / progress.totalEstimate) * 100)
@@ -332,6 +373,60 @@ export default function AnalyzePage() {
               ))}
             </div>
           </div>
+
+          {monthlyData.length > 0 && (
+            <div className={`p-6 ${clayCard}`}>
+              <h3 className="mb-4 font-semibold text-slate-800">Reviews by month</h3>
+              <div className="mb-4 flex flex-wrap items-center gap-4">
+                <span className="text-sm text-slate-600">Show:</span>
+                {([1, 2, 3, 4, 5] as const).map((s) => (
+                  <label
+                    key={s}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg bg-white/60 px-3 py-1.5 text-sm transition hover:bg-white/80"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={chartStars[s] ?? false}
+                      onChange={(e) =>
+                        setChartStars((prev) => ({ ...prev, [s]: e.target.checked }))
+                      }
+                      className="h-4 w-4 rounded border-slate-300 text-blue-500 focus:ring-blue-400"
+                    />
+                    <span className="text-slate-700">{"★".repeat(s)}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="h-80 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
+                    <XAxis
+                      dataKey="monthLabel"
+                      tick={{ fontSize: 12, fill: "#64748b" }}
+                      axisLine={{ stroke: "#e2e8f0" }}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 12, fill: "#64748b" }}
+                      axisLine={{ stroke: "#e2e8f0" }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: "12px",
+                        border: "1px solid rgba(255,255,255,0.8)",
+                        boxShadow: "0 8px 32px rgba(31,38,135,0.1)",
+                      }}
+                    />
+                    <Legend />
+                    {chartStars[1] && <Bar dataKey="1" name="1★" stackId="a" fill="#ef4444" radius={[0, 0, 0, 0]} />}
+                    {chartStars[2] && <Bar dataKey="2" name="2★" stackId="a" fill="#f97316" radius={[0, 0, 0, 0]} />}
+                    {chartStars[3] && <Bar dataKey="3" name="3★" stackId="a" fill="#eab308" radius={[0, 0, 0, 0]} />}
+                    {chartStars[4] && <Bar dataKey="4" name="4★" stackId="a" fill="#60a5fa" radius={[0, 0, 0, 0]} />}
+                    {chartStars[5] && <Bar dataKey="5" name="5★" stackId="a" fill="#22c55e" radius={[0, 4, 4, 0]} />}
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
 
           <div className={`p-6 ${clayCard}`}>
             <h3 className="mb-4 font-semibold text-slate-800">
