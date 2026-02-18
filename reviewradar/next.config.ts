@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["google-play-scraper", "app-store-scraper"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "play-lh.googleusercontent.com" },
