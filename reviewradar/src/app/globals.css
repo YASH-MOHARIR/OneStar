@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f0f4f8;
+  --foreground: #1e293b;
+  --clay-bg: rgba(255, 255, 255, 0.7);
+  --clay-border: rgba(255, 255, 255, 0.9);
+  --clay-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+  --clay-shadow-hover: 0 12px 40px rgba(31, 38, 135, 0.15);
 }
 
 @theme inline {
@@ -10,7 +14,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  /* ReviewRadar brand colors */
   --color-brand-50: #eff6ff;
   --color-brand-100: #dbeafe;
   --color-brand-200: #bfdbfe;
@@ -28,15 +31,9 @@
   --color-severity-low: #3b82f6;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
+  background: linear-gradient(135deg, #e8eef5 0%, #f5f8fc 50%, #e2e8f0 100%);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  min-height: 100vh;
 }
