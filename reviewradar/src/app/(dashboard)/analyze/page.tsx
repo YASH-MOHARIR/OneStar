@@ -223,12 +223,7 @@ export default function AnalyzePage() {
       if (!res.ok) throw new Error(data.error || "Analysis failed");
       window.location.href = `/report/${data.analysisId}`;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Analysis failed";
-      setError(
-        msg.toLowerCase().includes("unauthorized")
-          ? "Please sign in to run AI analysis."
-          : msg
-      );
+      setError(err instanceof Error ? err.message : "Analysis failed");
       setLoading("idle");
     }
   };

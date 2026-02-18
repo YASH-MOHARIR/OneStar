@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { parseAppUrl } from "@/lib/scraper";
 import { inngest } from "@/lib/inngest/client";
 import { z } from "zod/v3";
+
+const GUEST_USER_ID = "guest";
 
 const AnalyzeSchema = z.object({
   appUrl: z.string().url().optional(),
@@ -16,14 +17,15 @@ const AnalyzeSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const user = await db.user.findUnique({ where: { id: userId } });
+  let user = await db.user.findUnique({ where: { id: GUEST_USER_ID } });
   if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+    user = await db.user.create({
+      data: {
+        id: GUEST_USER_ID,
+        email: "guest@local.dev",
+        creditsLimit: 100,
+      },
+    });
   }
 
   if (user.plan === "FREE" && user.creditsUsed >= user.creditsLimit) {
@@ -37,6 +39,8 @@ export async function POST(req: NextRequest) {
       { status: 403 }
     );
   }
+
+  const userId = user.id;
 
   const body = await req.json();
   const parsed = AnalyzeSchema.safeParse(body);
