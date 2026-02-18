@@ -36,7 +36,7 @@ export const runAnalysis = inngest.createFunction(
     });
 
     const scrapeResult = await step.run("scrape-reviews", async () => {
-      const result = await scrapeReviews(storeId, store, { num: 3000 });
+      const result = await scrapeReviews(storeId, store, { num: 3000, sort: "rating" });
 
       await db.app.update({
         where: { store_storeId: { store, storeId } },
